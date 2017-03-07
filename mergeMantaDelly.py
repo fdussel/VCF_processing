@@ -105,7 +105,7 @@ def startNewListForComparisonSVs(list_for_comparisonSVs, currentLine):
 
 	return comparingSVs_list
 
-def compareFilterAndWriteSVs(list_for_comparisonSVs, vcf_writer): #is called when list_for_comparisonSVs is about to be refreshed
+def compareFilterSVs(list_for_comparisonSVs): #is called when list_for_comparisonSVs is about to be refreshed
 	similar_SVs = list_for_comparisonSVs
 	similar_SVs.sort(key=operator.itemgetter("ciposint"))
 	similar_SVs.sort(key=operator.itemgetter("tool"), reverse = True)
@@ -123,14 +123,48 @@ def compareFilterAndWriteSVs(list_for_comparisonSVs, vcf_writer): #is called whe
 				record_sv_to_print.INFO["INFODELLY"] = similar_SVs[1]["INFO"]
 			else:
 				record_sv_to_print.INFO["CSA"] = 1
-
 			sv_to_print.append(record_sv_to_print)
-		else:
+
+		else: #Only delly
 			record_sv_to_print = similar_SVs[0]["record"]
 			record_sv_to_print.INFO["CSA"] = 1
 			sv_to_print.append(record_sv_to_print)
 
-	for record in sv_to_print:
+	return sv_to_print
+
+def filterBndTraAndWriteSVs(all_svs_to_write, vcf_writer):
+	for record in all_svs_to_write:
+		if record.INFO["SVTYPE"] == "BND":
+			record_alt = record.ALT[0]
+			string_record_alt = str(record_alt)
+			if "[" in string_record_alt:
+				split_string_record_alt = string_record_alt.split("[")
+			if "]" in string_record_alt:
+				split_string_record_alt = string_record_alt.split("]")
+			splitted_alt = split_string_record_alt[1].split(":")
+			chrom2 = splitted_alt[0]
+			pos2 = splitted_alt[1]
+			i_chrom2 = int(chrom2)
+			i_pos2 = int(pos2)
+		else:
+			if record.INFO["SVTYPE"] == "TRA":
+				chrom2 = record.INFO["CHR2"]
+				i_chrom2 = int(chrom2)
+			chrom2 = 0; i_chrom2 = 0 # if no bnd or tra, chrom should not match
+
+		for line in all_svs_to_write:
+			#i_chrom = int(line.CHROM)
+			if (chrom2 == line.CHROM):
+				print "chromosomes equal"
+				print type(line.POS)
+				print type(i_pos2)
+				print type(i_chrom2)
+				if (i_pos2 == line.POS):
+					print "positions equal"
+					all_svs_to_write.remove(line)
+				else: #delly does not have a pos, do we need to filter it? cannot be done based on only chrom
+					continue
+
 		vcf_writer.write_record(record)
 
 def conditionsInsForComparison(currentLine, previousLine):
@@ -235,6 +269,7 @@ def combineVCFsOverlapFilter(delly, manta, output):
 				#first we will sort on the chrom, then on the startposition of the SV
 				list_all_records_MantaDelly.sort(key=operator.itemgetter("CHROM","POS"))
 				list_for_comparisonSVs = []
+				all_svs_to_write = []
 
 				previousLine = list_all_records_MantaDelly[0]
 				for currentLine in list_all_records_MantaDelly:
@@ -245,13 +280,17 @@ def combineVCFsOverlapFilter(delly, manta, output):
 						list_for_comparisonSVs.append(currentLine)
 
 					else:
-						compareFilterAndWriteSVs(list_for_comparisonSVs, vcf_writer)
+						list_sv_to_print = compareFilterSVs(list_for_comparisonSVs)
+						all_svs_to_write.extend(list_sv_to_print)
 						list_for_comparisonSVs = startNewListForComparisonSVs(list_for_comparisonSVs, currentLine)
 
 					previousLine = currentLine
 
 				if len(list_for_comparisonSVs) == 1: #when the last line in the file was a single SV
-					compareFilterAndWriteSVs(list_for_comparisonSVs, vcf_writer)
+					list_sv_to_print = compareFilterSVs(list_for_comparisonSVs)
+					all_svs_to_write.extend(list_sv_to_print)
+
+				filterBndTraAndWriteSVs(all_svs_to_write, vcf_writer)
 
 			vcf_delly.close()
 		vcf_manta.close()
@@ -264,7 +303,7 @@ if __name__ == '__main__':
 
 	required_named = parser.add_argument_group('Required arguments')
 	required_named.add_argument('-d', '--dellyVCF', help = "input a vcf file from delly to process", required=True)
-	required_named.add_argument('-ma', '--mantaVCF', help = "input a vcf file from manta to process", required=True)
+	required_named.add_argument('-m', '--mantaVCF', help = "input a vcf file from manta to process", required=True)
 	required_named.add_argument('-o', '--outputVCF', help = "give the filename of a vcf file for the merged output", required=True)
 
 	args = parser.parse_args()
