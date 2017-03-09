@@ -132,7 +132,7 @@ def compareFilterSVs(list_for_comparisonSVs): #is called when list_for_compariso
 
 	return sv_to_print
 
-def filterBndTraAndWriteSVs(all_svs_to_write, vcf_writer):
+def filterBndAndWriteSVs(all_svs_to_write, vcf_writer):
 	for record in all_svs_to_write:
 		if record.INFO["SVTYPE"] == "BND":
 			record_alt = record.ALT[0]
@@ -144,26 +144,14 @@ def filterBndTraAndWriteSVs(all_svs_to_write, vcf_writer):
 			splitted_alt = split_string_record_alt[1].split(":")
 			chrom2 = splitted_alt[0]
 			pos2 = splitted_alt[1]
-			i_chrom2 = int(chrom2)
 			i_pos2 = int(pos2)
 		else:
-			if record.INFO["SVTYPE"] == "TRA":
-				chrom2 = record.INFO["CHR2"]
-				i_chrom2 = int(chrom2)
-			chrom2 = 0; i_chrom2 = 0 # if no bnd or tra, chrom should not match
+			chrom2 = 0; i_chrom2 = 0 # if no bnd, chrom should not match
 
 		for line in all_svs_to_write:
-			#i_chrom = int(line.CHROM)
 			if (chrom2 == line.CHROM):
-				print "chromosomes equal"
-				print type(line.POS)
-				print type(i_pos2)
-				print type(i_chrom2)
 				if (i_pos2 == line.POS):
-					print "positions equal"
 					all_svs_to_write.remove(line)
-				else: #delly does not have a pos, do we need to filter it? cannot be done based on only chrom
-					continue
 
 		vcf_writer.write_record(record)
 
@@ -290,7 +278,7 @@ def combineVCFsOverlapFilter(delly, manta, output):
 					list_sv_to_print = compareFilterSVs(list_for_comparisonSVs)
 					all_svs_to_write.extend(list_sv_to_print)
 
-				filterBndTraAndWriteSVs(all_svs_to_write, vcf_writer)
+				filterBndAndWriteSVs(all_svs_to_write, vcf_writer)
 
 			vcf_delly.close()
 		vcf_manta.close()
