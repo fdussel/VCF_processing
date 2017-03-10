@@ -39,7 +39,7 @@ def extractInfoManta(record):
 
 	if "END" in record.INFO:
 		end = record.INFO["END"]
-	elif record.INFO["SVTYPE"] == "BND": #because BNDs do not have a value for END and contain mostly TRA with a length of 0, END is set equal to POS.
+	elif record.INFO["SVTYPE"] == "BND": #because BNDs do not have a value for END and contain mostly translocations with a length of 0, END is set equal to POS.
 		end = record.POS
 	else:
 		print "there is a value missing for record.Info[\"END\"]"
@@ -66,11 +66,12 @@ def getInfoInList(record):
 	chrom = new_record.CHROM
 	pos = new_record.POS
 	end = new_record.INFO["END"]
+	alt = new_record.ALT
 
 	if "CIPOS" in new_record.INFO:
 		cipos = new_record.INFO["CIPOS"]
-		ciposmin = pos + cipos[0] - 20
-		ciposmax = pos + cipos[1] + 20
+		ciposmin = pos + cipos[0]
+		ciposmax = pos + cipos[1]
 	else:
 		cipos = [-50, 50]
 		ciposmin = pos + cipos[0]
@@ -78,8 +79,8 @@ def getInfoInList(record):
 
 	if "CIEND" in new_record.INFO:
 		ciend= new_record.INFO["CIEND"]
-		ciendmin = (end + ciend[0] - 20)
-		ciendmax = (end + ciend[1] + 20)
+		ciendmin = end + ciend[0]
+		ciendmax = end + ciend[1]
 	else:
 		ciend = [-50, 50]
 		ciendmin = end + ciend[0]
@@ -94,7 +95,7 @@ def getInfoInList(record):
 	info = new_record.INFO
 	form = new_record.FORMAT
 
-	dict_record = {"ciposint": ciposint, "tool": tool, "CHROM" : chrom, "POS": pos, "ciposmin": ciposmin, "ciposmax": ciposmax, "ciendmin": ciendmin, "ciendmax": ciendmax, "ID" : ID, "INFO": info, "record": new_record}
+	dict_record = {"ALT": alt, "ciposint": ciposint, "tool": tool, "CHROM" : chrom, "POS": pos, "ciposmin": ciposmin, "ciposmax": ciposmax, "ciendmin": ciendmin, "ciendmax": ciendmax, "ID" : ID, "INFO": info, "record": new_record}
 	return dict_record
 
 def startNewListForComparisonSVs(list_for_comparisonSVs, currentLine):
@@ -118,11 +119,12 @@ def compareFilterSVs(list_for_comparisonSVs): #is called when list_for_compariso
 	else:
 		if similar_SVs[0]["tool"] == "MANTA":
 			record_sv_to_print = similar_SVs[0]["record"]
-			if similar_SVs[1]["tool"] == "DELLY":
-				record_sv_to_print.INFO["CSA"] = 2
-				record_sv_to_print.INFO["INFODELLY"] = similar_SVs[1]["INFO"]
-			else:
-				record_sv_to_print.INFO["CSA"] = 1
+			for similar_SV in similar_SVs:
+				if "DELLY" in similar_SV["tool"]:
+					record_sv_to_print.INFO["CSA"] = 2
+					record_sv_to_print.INFO["INFODELLY"] = similar_SV["POS"], #similar_SV["INFO"]["END"]
+				else:
+					record_sv_to_print.INFO["CSA"] = 1
 			sv_to_print.append(record_sv_to_print)
 
 		else: #Only delly
@@ -153,6 +155,7 @@ def filterBndAndWriteSVs(all_svs_to_write, vcf_writer):
 				if (i_pos2 == line.POS):
 					all_svs_to_write.remove(line)
 
+	for record in all_svs_to_write:
 		vcf_writer.write_record(record)
 
 def conditionsInsForComparison(currentLine, previousLine):
@@ -162,12 +165,18 @@ def conditionsInsForComparison(currentLine, previousLine):
 	cilength = [-20,20]
 	svtypeCur = currentLine["INFO"]["SVTYPE"]
 	svtypePrev = previousLine["INFO"]["SVTYPE"]
+	ciposminCurrentLine = svLenCurrentLine + cilength[0]
+	ciposmaxCurrentLine = svLenCurrentLine + cilength[1]
+	ciposminPreviousLine = svLenPreviousLine + cilength[0]
+	ciposmaxPreviousLine = svLenPreviousLine + cilength[1]
 
 	if (((svtypeCur == "INS") and (svtypePrev == "INS")) and #for insertions
-	(((svLenCurrentLine + cilength[0]) <= (svLenPreviousLine + cilength[1])) or #if lengths are in the same confidenceinterval
-	((svLenCurrentLine + cilength[1]) >= (svLenPreviousLine + cilength[0])))):
-		return True;
-
+	(((ciposmaxCurrentLine >= ciposminPreviousLine) and (ciposminCurrentLine <= ciposminPreviousLine)) or
+	((ciposminCurrentLine <= ciposmaxPreviousLine) and (ciposmaxCurrentLine >= ciposmaxPreviousLine)) or
+	((ciposminCurrentLine >= ciposminPreviousLine) and (ciposmaxCurrentLine <= ciposmaxPreviousLine)) or
+	((ciposminCurrentLine <= ciposminPreviousLine) and (ciposmaxCurrentLine >= ciposmaxPreviousLine))) or
+	(svLenCurrentLine == svLenPreviousLine)):
+	 	return True;
 
 def conditionsForComparions(currentLine, previousLine):
 	ciposminCurrentLine = currentLine["ciposmin"]
@@ -180,13 +189,77 @@ def conditionsForComparions(currentLine, previousLine):
 	ciEndmaxCurrentLine = currentLine["ciendmax"]
 	ciEndminPreviousLine = previousLine["ciendmin"]
 	ciEndmaxPreviousLine = previousLine["ciendmax"]
+	posCur = currentLine["POS"]
+	posPrev = previousLine["POS"]
+	endCur = infoCurrentLine["END"]
+	endPrev = infoPreviousLine["END"]
 
-	if (((infoCurrentLine["SVTYPE"] == infoPreviousLine["SVTYPE"]) or (infoCurrentLine["SVTYPE"] == "TRA" and infoPreviousLine["SVTYPE"] == "BND") or
-	 (infoCurrentLine["SVTYPE"] == "BND" and infoPreviousLine["SVTYPE"] == "TRA")) and ((currentLine["CHROM"] == previousLine["CHROM"]) and #if on the same chrom
-	 (ciposmaxCurrentLine >= ciposminPreviousLine or ciposminCurrentLine <= ciposmaxPreviousLine) and  #if positions are in the same confidence interval
-	 (ciEndmaxCurrentLine >= ciEndminPreviousLine or ciEndminCurrentLine <= ciEndmaxPreviousLine))): #if ends are in the same confidence interval
-	 	return True;
+	if ((infoCurrentLine["SVTYPE"] == "TRA") or (infoCurrentLine["SVTYPE"] == "BND")): #if BND or TRA check for same translocation position second chromosome
+		print "tra or bnd"
+		if ((infoPreviousLine["SVTYPE"] == "BND") or (infoPreviousLine["SVTYPE"] == "BND")):
+			print "BND or TRA"
+	 		if infoCurrentLine["SVTYPE"] == "BND":
+				altCur = currentLine["ALT"]
+				if "[" in altCur:
+					split_string_record_alt = altCur.split("[")
+				if "]" in altCur:
+					split_string_record_alt = altCur.split("]")
+				splitted_alt = split_string_record_alt[1].split(":")
+				chrom2cur = splitted_alt[0]
+				pos2cur = splitted_alt[1]
+				pos2cur = int(pos2cur)
+				print chrom2cur, pos2cur
 
+			elif infoCurrentLine["SVTYPE"] == "TRA":
+				chrom2cur = infoCurrentLine["chr2"]
+				pos2cur = infoCurrentLine["END"]
+				print chrom2cur, pos2cur
+
+			if infoPreviousLine["SVTYPE"] == "BND":
+				altPrev = previousLine["ALT"]
+				if "[" in string_record_alt:
+					split_string_record_alt = altPrev.split("[")
+				if "]" in string_record_alt:
+					split_string_record_alt = altPrev.split("]")
+				splitted_alt = split_string_record_alt[1].split(":")
+				chrom2prev = splitted_alt[0]
+				pos2prev = splitted_alt[1]
+				pos2prev = int(pos2prev)
+				print chrom2prev, pos2prev
+
+			elif infoPreviousLine["SVTYPE"] == "TRA":
+				chrom2prev = infoPreviousLine["chr2"]
+				pos2prev = infoPreviousLine["END"]
+				print chrom2prev, pos2prev
+
+			chrom2curMin = chrom2cur - 20
+			chrom2curMax = chrom2cur + 20
+			chrom2prevMin = chrom2prev - 20
+			chrom2prevMax = chrom2prev + 20
+			if ((chrom2cur == chrom2prev) and
+			((chrom2curMax >= chrom2prevMin) and (chrom2curMin <= chrom2prevMin)) or
+			((chrom2curMin <= chrom2prevMax) and (chrom2curMax >= chrom2prevMax)) or
+			((chrom2curMin >= chrom2prevMin) and (chrom2curMax <= chrom2prevMax)) or
+			((chrom2curMin <= chrom2prevMin) and (chrom2curMax >= chrom2prevMax)) or
+			(chrom2cur == chrom2prev)):
+				return True
+		else:
+			 print infoCurrentLine["SVTYPE"], posCur, infoPreviousLine["SVTYPE"], posPrev
+
+	elif ((infoCurrentLine["SVTYPE"] == infoPreviousLine["SVTYPE"]) and #if types are equal
+	 (currentLine["CHROM"] == previousLine["CHROM"]) and #if on the same chrom
+	 (((ciposmaxCurrentLine >= ciposminPreviousLine) and (ciposminCurrentLine <= ciposminPreviousLine)) or
+	 ((ciposminCurrentLine <= ciposmaxPreviousLine) and (ciposmaxCurrentLine >= ciposmaxPreviousLine)) or
+	 ((ciposminCurrentLine >= ciposminPreviousLine) and (ciposmaxCurrentLine <= ciposmaxPreviousLine)) or
+	 ((ciposminCurrentLine <= ciposminPreviousLine) and (ciposmaxCurrentLine >= ciposmaxPreviousLine)) or
+	 (posCur == posPrev)) and #if in the same confidenceinterval of pos
+	 (((ciEndmaxCurrentLine >= ciEndminPreviousLine) and (ciEndminCurrentLine <= ciEndminPreviousLine)) or
+	 ((ciEndminCurrentLine <= ciEndmaxPreviousLine) and (ciEndmaxCurrentLine >= ciEndmaxPreviousLine)) or
+	 ((ciEndminCurrentLine >= ciEndminPreviousLine) and (ciEndmaxCurrentLine <= ciEndmaxPreviousLine)) or
+	 ((ciEndminCurrentLine <= ciEndminPreviousLine) and (ciEndmaxCurrentLine >= ciEndmaxPreviousLine)) or
+	 (endCur == endPrev))): #if in the same confidencinterval of end
+	 	#print infoCurrentLine["SVTYPE"], infoPreviousLine["SVTYPE"]
+	 	return True
 
 def combineVCFs(delly, manta, output):
 	vcf_reader_template = vcf.Reader(filename='template.vcf')
