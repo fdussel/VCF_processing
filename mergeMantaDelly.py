@@ -153,6 +153,8 @@ def filterBndAndWriteSVs(all_svs_to_write, vcf_writer):
 		for line in all_svs_to_write:
 			if (chrom2 == line.CHROM):
 				if (i_pos2 == line.POS):
+					if line.INFO["CSA"] == 2:
+						record.INFO["CSA"] = 2
 					all_svs_to_write.remove(line)
 
 	for record in all_svs_to_write:
