@@ -1,12 +1,4 @@
-#!/home/cog/fdussel/venv/venv_python_27/bin/python
 #Classifies SVs according to their type and length
-'''
-''commands to activate:''
-source /home/cog/fdussel/venv/venv_python_27/bin/activate
-
-deactivate
-'''
-
 import os
 import re
 import numpy as np
@@ -35,16 +27,16 @@ def extractInfoINS (record):
 	if "INSLEN" in record.INFO:
 		length_get = record.INFO["INSLEN"]
 		length = abs(length_get)
-		print 'INSLENGTH used as length of insertion'
+		#print 'INSLENGTH used as length of insertion'
 	elif "SVLEN" in record.INFO:
 		length = record.INFO["SVLEN"]
 		if length != int:
 			length = length[0]
 		if length < 0:
 			length = length * -1
-		print 'SVLEN used as length of insertion'
-	else:
-		print 'No insertion length found. Note: insertion is put in the group of length <10kb'
+		#print 'SVLEN used as length of insertion'
+	#else:
+		#print 'No insertion length found. Note: insertion is put in the group of length <10kb'
 
 	output = [chrom, pos, end, length]
 	return output;
@@ -105,7 +97,7 @@ def checkLengthSVs(record):
 
 	if  record.INFO["SVTYPE"] == "TRA":
 		tra_output = extractInfoINVDELTRADUP(record)
-		tra_outputlist.append(tra_output)
+		tra_bnd_outputlist.append(tra_output)
 
 	if record.INFO["SVTYPE"] == "DUP":
 		dup_output = extractInfoINVDELTRADUP(record)
@@ -124,12 +116,12 @@ def checkLengthSVs(record):
 
 	if record.INFO["SVTYPE"] == "BND":
 		bnd_output = extractInfoBND(record)
-		bnd_outputlist.append(bnd_output)
+		tra_bnd_outputlist.append(bnd_output)
 
 path = "/home/cog/fdussel/Documents/*.vcf"
 for vcf_filename in glob.glob(path):
 	#vcf= open(vcf_filename)
-	print vcf_filename
+	#print vcf_filename
 	vcf_file = None
 	df_vcf = pd.DataFrame()
 	vcf_file_handle = open(vcf_filename, 'r')
@@ -154,13 +146,12 @@ for vcf_filename in glob.glob(path):
 	inv_outputlist1000 = []
 	inv_outputlist10000 = []
 	inv_outputlist100000 = []
-	tra_outputlist = []
+	tra_bnd_outputlist = []
 	dup_outputlist10 = []
 	dup_outputlist100 = []
 	dup_outputlist1000 = []
 	dup_outputlist10000 = []
 	dup_outputlist100000 = []
-	bnd_outputlist = []
 
 	all_names = vcf_filename.rsplit('/', 1)
 	name = all_names[1]
@@ -176,9 +167,9 @@ for vcf_filename in glob.glob(path):
 					"ins_1mb_10mb" : len(ins_outputlist10000), "ins_>10mb" : len(ins_outputlist100000),
 		   			"inv_<10kb" : len(inv_outputlist10), "inv_10_100kb": len(inv_outputlist100), "inv_100kb_1mb" : len(inv_outputlist1000),
 					"inv_1mb_10mb" : len(inv_outputlist10000), "inv_>10mb" : len(inv_outputlist100000),
-					"tra ": len(tra_outputlist),
+					"tra/bnd ": len(tra_bnd_outputlist),
 					"dup_<10kb" : len(dup_outputlist10), "dup_10_100kb" : len(dup_outputlist100), "dup_100kb_1mb" : len(dup_outputlist1000),
-					"dup_1mb_10mb" : len(dup_outputlist10000), "dup_>10mb" : len(dup_outputlist100000), "bnd ": len(bnd_outputlist)}
+					"dup_1mb_10mb" : len(dup_outputlist10000), "dup_>10mb" : len(dup_outputlist100000)}
 
 		df_vcf = pd.DataFrame({name: dict_numberSV}, index = dict_numberSV.keys())
 
@@ -189,6 +180,6 @@ for vcf_filename in glob.glob(path):
 		df_all = pd.concat([df_all, df_vcf], axis=1)
 		df_all = df_all.sort_index()
 
-print list_vcf_names
+#print list_vcf_names
 
 print df_all
