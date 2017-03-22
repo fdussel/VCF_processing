@@ -38,7 +38,7 @@ def categorize(path):
 				length = length * -1
 			#print 'SVLEN used as length of insertion'
 		#else:
-			#print 'No insertion length found. Note: insertion is put in the group of length <10kb'
+			#print 'No insertion length found. Note: insertion is not taken into account in the table'
 
 		output = [chrom, pos, end, length]
 		return output;
@@ -57,7 +57,7 @@ def categorize(path):
 			del_output = extractInfoINVDELTRADUP(record)
 			length = del_output[3]
 
-			if length < 10001: #10001bp, so length of 10kb
+			if (length < 10001 and length > 999): #999-10001bp, so length of 1-10kb
 				del_outputlist10.append(del_output)
 			elif length <100001: #100kbp
 				del_outputlist100.append(del_output)
@@ -72,7 +72,7 @@ def categorize(path):
 			ins_output = extractInfoINS(record)
 			length = ins_output[3]
 
-			if length < 10001: #10001bp, so length of 10kb
+			if (length < 10001 and length > 999): #999-10001bp, so length of 1-10kb
 				ins_outputlist10.append(ins_output)
 			elif length <100001: #100kbp
 				ins_outputlist100.append(ins_output)
@@ -86,7 +86,7 @@ def categorize(path):
 		if record.INFO["SVTYPE"] == "INV":
 			inv_output = extractInfoINVDELTRADUP(record)
 			length = inv_output[3]
-			if length < 10001: #10001bp, so length of 10kb
+			if (length < 10001 and length > 999): #999-10001bp, so length of 1-10kb
 				inv_outputlist10.append(inv_output)
 			elif length <100001: #100kbp
 				inv_outputlist100.append(inv_output)
@@ -105,7 +105,7 @@ def categorize(path):
 			dup_output = extractInfoINVDELTRADUP(record)
 			length = dup_output[3]
 
-			if length < 10001: #10001bp, so length of 10kb
+			if (length < 10001 and length > 999): #999-10001bp, so length of 1-10kb
 				dup_outputlist10.append(dup_output)
 			elif length <100001: #100kbp
 				dup_outputlist100.append(dup_output)
@@ -164,14 +164,14 @@ def categorize(path):
 			checkLengthSVs(record)
 
 
-			dict_numberSV = {"del_<10kb" : len(del_outputlist10), "del_10_100kb": len(del_outputlist100), "del_100kb_1mb": len(del_outputlist1000),
+			dict_numberSV = {"del_1-10kb" : len(del_outputlist10), "del_10_100kb": len(del_outputlist100), "del_100kb_1mb": len(del_outputlist1000),
 						"del_1mb_10mb" : len(del_outputlist10000), "del_>10mb": len(del_outputlist100000),
-						"ins_<10kb" : 	len(ins_outputlist10), "ins_10_100kb" : len(ins_outputlist100), "ins_100kb_1mb": len(ins_outputlist1000),
+						"ins_1-10kb" : 	len(ins_outputlist10), "ins_10_100kb" : len(ins_outputlist100), "ins_100kb_1mb": len(ins_outputlist1000),
 						"ins_1mb_10mb" : len(ins_outputlist10000), "ins_>10mb" : len(ins_outputlist100000),
-			   			"inv_<10kb" : len(inv_outputlist10), "inv_10_100kb": len(inv_outputlist100), "inv_100kb_1mb" : len(inv_outputlist1000),
+			   			"inv_1-10kb" : len(inv_outputlist10), "inv_10_100kb": len(inv_outputlist100), "inv_100kb_1mb" : len(inv_outputlist1000),
 						"inv_1mb_10mb" : len(inv_outputlist10000), "inv_>10mb" : len(inv_outputlist100000),
 						"tra/bnd ": len(tra_bnd_outputlist),
-						"dup_<10kb" : len(dup_outputlist10), "dup_10_100kb" : len(dup_outputlist100), "dup_100kb_1mb" : len(dup_outputlist1000),
+						"dup_1-10kb" : len(dup_outputlist10), "dup_10_100kb" : len(dup_outputlist100), "dup_100kb_1mb" : len(dup_outputlist1000),
 						"dup_1mb_10mb" : len(dup_outputlist10000), "dup_>10mb" : len(dup_outputlist100000)}
 
 			df_vcf = pd.DataFrame({name: dict_numberSV}, index = dict_numberSV.keys())
