@@ -122,7 +122,7 @@ def compareFilterSVs(list_for_comparisonSVs): #is called when list_for_compariso
 			for similar_SV in similar_SVs:
 				if "DELLY" in similar_SV["tool"]:
 					record_sv_to_print.INFO["CSA"] = 2
-					record_sv_to_print.INFO["INFODELLY"] = similar_SV["POS"], #similar_SV["INFO"]["END"]
+					record_sv_to_print.INFO["INFODELLY"] = similar_SV["POS"]#, similar_SV["INFO"]["END"]
 				else:
 					record_sv_to_print.INFO["CSA"] = 1
 			sv_to_print.append(record_sv_to_print)
@@ -195,58 +195,76 @@ def conditionsForComparions(currentLine, previousLine):
 	posPrev = previousLine["POS"]
 	endCur = infoCurrentLine["END"]
 	endPrev = infoPreviousLine["END"]
+	pos2cur = 0
+	pos2prev = 0
 
-	if ((infoCurrentLine["SVTYPE"] == "TRA") or (infoCurrentLine["SVTYPE"] == "BND")): #if BND or TRA check for same translocation position second chromosome
-		print "tra or bnd"
-		if ((infoPreviousLine["SVTYPE"] == "BND") or (infoPreviousLine["SVTYPE"] == "BND")):
-			print "BND or TRA"
-	 		if infoCurrentLine["SVTYPE"] == "BND":
-				altCur = currentLine["ALT"]
-				if "[" in altCur:
-					split_string_record_alt = altCur.split("[")
-				if "]" in altCur:
-					split_string_record_alt = altCur.split("]")
-				splitted_alt = split_string_record_alt[1].split(":")
+	if ((infoPreviousLine["SVTYPE"] == "TRA") or (infoPreviousLine["SVTYPE"] == "BND")):
+		if infoCurrentLine["SVTYPE"] == "BND":
+			altCur = currentLine["ALT"]
+			if "[" in altCur:
+				split_string_record_alt = altCur.split("[")
+			if "]" in altCur:
+				split_string_record_alt = altCur.split("]")
+			splitted_alt = split_string_record_alt[1].split(":")
+			chrom2cur = splitted_alt[0]
+			pos2cur = splitted_alt[1]
+			pos2cur = int(pos2cur)
+			altCur = currentLine["ALT"][0]
+			string_record_alt = str(altCur)
+			if "[" or "]" in string_record_alt:
+				split_string_record_alt = string_record_alt.split("[")
+				split_string_record_alt2 = []
+				for i in split_string_record_alt:
+					splitted_string_alt = i.split("]")
+					split_string_record_alt2.extend(splitted_string_alt)
+
+				splitted_alt = split_string_record_alt2[1].split(":")
 				chrom2cur = splitted_alt[0]
 				pos2cur = splitted_alt[1]
 				pos2cur = int(pos2cur)
-				print chrom2cur, pos2cur
 
-			elif infoCurrentLine["SVTYPE"] == "TRA":
-				chrom2cur = infoCurrentLine["chr2"]
-				pos2cur = infoCurrentLine["END"]
-				print chrom2cur, pos2cur
+		elif infoCurrentLine["SVTYPE"] == "TRA":
+			chrom2cur = infoCurrentLine["CHR2"]
+			pos2cur = infoCurrentLine["END"]
 
-			if infoPreviousLine["SVTYPE"] == "BND":
-				altPrev = previousLine["ALT"]
-				if "[" in string_record_alt:
-					split_string_record_alt = altPrev.split("[")
-				if "]" in string_record_alt:
-					split_string_record_alt = altPrev.split("]")
-				splitted_alt = split_string_record_alt[1].split(":")
-				chrom2prev = splitted_alt[0]
-				pos2prev = splitted_alt[1]
-				pos2prev = int(pos2prev)
-				print chrom2prev, pos2prev
+		if infoPreviousLine["SVTYPE"] == "BND":
+			altPrev = previousLine["ALT"][0]
+			string_record_alt = str(altPrev)
+			if "[" or "]" in string_record_alt:
+				split_string_record_alt = string_record_alt.split("[")
+				split_string_record_alt2 = []
+				for i in split_string_record_alt:
+					splitted_string_alt = i.split("]")
+					split_string_record_alt2.extend(splitted_string_alt)
 
-			elif infoPreviousLine["SVTYPE"] == "TRA":
-				chrom2prev = infoPreviousLine["chr2"]
-				pos2prev = infoPreviousLine["END"]
-				print chrom2prev, pos2prev
+			splitted_alt = split_string_record_alt2[1].split(":")
+			chrom2prev = splitted_alt[0]
+			pos2prev = splitted_alt[1]
+			pos2prev = int(pos2prev)
 
-			chrom2curMin = chrom2cur - 20
-			chrom2curMax = chrom2cur + 20
-			chrom2prevMin = chrom2prev - 20
-			chrom2prevMax = chrom2prev + 20
-			if ((chrom2cur == chrom2prev) and
-			((chrom2curMax >= chrom2prevMin) and (chrom2curMin <= chrom2prevMin)) or
-			((chrom2curMin <= chrom2prevMax) and (chrom2curMax >= chrom2prevMax)) or
-			((chrom2curMin >= chrom2prevMin) and (chrom2curMax <= chrom2prevMax)) or
-			((chrom2curMin <= chrom2prevMin) and (chrom2curMax >= chrom2prevMax)) or
-			(chrom2cur == chrom2prev)):
+		elif infoPreviousLine["SVTYPE"] == "TRA":
+			chrom2prev = infoPreviousLine["CHR2"]
+			pos2prev = infoPreviousLine["END"]
+
+		if ((pos2cur != 0) and (pos2prev !=0)):
+			pos2prevMin = pos2prev - 20
+			pos2prevMin = pos2prev + 20
+			pos2curMin = pos2cur - 20
+			pos2curMax = pos2cur + 20
+
+			if ((currentLine["CHROM"] == previousLine["CHROM"]) and #if on the same chrom
+		   	 (((ciposmaxCurrentLine >= ciposminPreviousLine) and (ciposminCurrentLine <= ciposminPreviousLine)) or
+		   	 ((ciposminCurrentLine <= ciposmaxPreviousLine) and (ciposmaxCurrentLine >= ciposmaxPreviousLine)) or
+		   	 ((ciposminCurrentLine >= ciposminPreviousLine) and (ciposmaxCurrentLine <= ciposmaxPreviousLine)) or
+		   	 ((ciposminCurrentLine <= ciposminPreviousLine) and (ciposmaxCurrentLine >= ciposmaxPreviousLine)) or
+		   	 (posCur == posPrev)) and #if in the same confidenceinterval of pos
+	 		((chrom2cur == chrom2prev) and #if 2nd chrom of translocation event is the same
+			((pos2curMax >= pos2prevMin) and (pos2curMin <= pos2prevMin)) or
+			((pos2curMin <= pos2prevMax) and (pos2curMax >= pos2prevMax)) or
+			((pos2curMin >= pos2prevMin) and (pos2curMax <= pos2prevMax)) or
+			((pos2curMin <= pos2prevMin) and (pos2curMax >= pos2prevMax)) or
+			(pos2cur == pos2prev))):
 				return True
-		else:
-			 print infoCurrentLine["SVTYPE"], posCur, infoPreviousLine["SVTYPE"], posPrev
 
 	elif ((infoCurrentLine["SVTYPE"] == infoPreviousLine["SVTYPE"]) and #if types are equal
 	 (currentLine["CHROM"] == previousLine["CHROM"]) and #if on the same chrom
@@ -260,8 +278,11 @@ def conditionsForComparions(currentLine, previousLine):
 	 ((ciEndminCurrentLine >= ciEndminPreviousLine) and (ciEndmaxCurrentLine <= ciEndmaxPreviousLine)) or
 	 ((ciEndminCurrentLine <= ciEndminPreviousLine) and (ciEndmaxCurrentLine >= ciEndmaxPreviousLine)) or
 	 (endCur == endPrev))): #if in the same confidencinterval of end
-	 	#print infoCurrentLine["SVTYPE"], infoPreviousLine["SVTYPE"]
 	 	return True
+
+
+	else:
+		return False
 
 def combineVCFs(delly, manta, output):
 	vcf_reader_template = vcf.Reader(filename='template.vcf')
