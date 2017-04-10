@@ -1,4 +1,16 @@
-#template.vcf is needed to make a merged file
+# template.vcf is needed to make a merged file!
+# Merges the vcfs of Manta and Delly, and puts them in an output file that can be given in the command line.
+# A file called template.vcf, containing the vcf-header for the output-file, is needed in the working directory.
+# There are two options to merge vcfs from Manta and Delly.
+# 1. Run the script with “–mantaVCF ‘name mantaVCF’ --dellyVCF ‘name dellyVCF’ –outputVCF ‘name outputVCF’”.
+# This will merge the files in the outputVCF stated. It will output all information of the inputfiles.
+# 2. Run script with “–mantaVCF ‘name mantaVCF’ --dellyVCF ‘name dellyVCF’ –outputVCF ‘name outputVCF’ --filterOverlap”.
+# Now, a few filtering steps will be done. Lists will be formed of SVs of Manta and Delly that have an overlapping confidenceinterval,
+# and from each list only one SV will be kept and put in the output-file. There is also filtered for BNDs from Manta: in the output from Manta there are two lines for one SV in case of a translocation.
+# In output from Delly there is one. There is filtered on double chromosomes and positions, so only one line is put in the outputfile for each translocation event.
+# The SVs that were called by both Manta and Delly will get a “CSA=2” tag in the INFO field of this SV, SVs called by one tool get “CSA=1” in their INFO field.
+# This gives an option for further filtering of the outputfile.
+
 import operator
 import vcf
 import argparse
