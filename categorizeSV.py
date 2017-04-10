@@ -1,4 +1,7 @@
-#Classifies SVs according to their type and length
+# A table will be made that contains all SVs from each VCF-file, with the SVs sorted on type and length.
+# Each vcf file is put in a different column of the table.
+# In the command line a path should be provided of the vcf files to be processed. 
+
 import os
 import re
 import numpy as np
